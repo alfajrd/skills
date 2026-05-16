@@ -1,0 +1,68 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ExampleVerdict",
+  "description": "Minimal example schema for an LLM-generated multi-axis verdict. Adapt fields to your domain — the critic skill cares about the pattern (schema + rubric), not these specific fields.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "subject_name",
+    "primary_axis_verdict",
+    "primary_axis_copy",
+    "secondary_axis_verdict",
+    "secondary_axis_copy",
+    "overall_verdict",
+    "headline",
+    "persona_signature"
+  ],
+  "properties": {
+    "subject_name": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 120
+    },
+    "primary_axis_verdict": {
+      "type": "string",
+      "enum": ["PRAISE", "GUILTY", "NEUTRAL"]
+    },
+    "primary_axis_copy": {
+      "type": "string",
+      "minLength": 10,
+      "maxLength": 400,
+      "description": "One-to-three sentences in the app's intended persona judging the primary axis."
+    },
+    "secondary_axis_verdict": {
+      "type": "string",
+      "enum": ["PRAISE", "GUILTY"]
+    },
+    "secondary_axis_copy": {
+      "type": "string",
+      "minLength": 10,
+      "maxLength": 400,
+      "description": "One-to-three sentences judging the secondary axis."
+    },
+    "overall_verdict": {
+      "type": "string",
+      "enum": [
+        "DOUBLE_GUILTY",
+        "PRIMARY_GUILTY_SECONDARY_PRAISE",
+        "PRIMARY_PRAISE_SECONDARY_GUILTY",
+        "DOUBLE_PRAISE",
+        "NEUTRAL_SECONDARY_GUILTY",
+        "NEUTRAL_SECONDARY_PRAISE"
+      ],
+      "description": "NEUTRAL_* variants apply when the safety gate trips and the primary axis is neither praised nor critiqued."
+    },
+    "headline": {
+      "type": "string",
+      "minLength": 5,
+      "maxLength": 120,
+      "description": "Short one-liner that anchors the verdict card."
+    },
+    "persona_signature": {
+      "type": "string",
+      "minLength": 5,
+      "maxLength": 80,
+      "description": "Footer credit referencing the user's persona name."
+    }
+  }
+}
