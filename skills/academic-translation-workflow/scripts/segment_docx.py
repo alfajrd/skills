@@ -10,6 +10,13 @@ This output is a DRAFT. Before translating, skim it for sentence-splitter
 mistakes (common around abbreviations like "dkk.", "dll.", initials, or
 unusual punctuation) and merge/fix rows as needed - the rest of the
 pipeline just trusts whatever rows are in the JSON you hand it next.
+
+Rows that contain a reference-manager citation field (Zotero/Mendeley/
+EndNote "Insert Citation") get a `citation_fields` list of that field's
+exact visible text (e.g. "(Bhambra, 2021)"). Whoever translates this row
+MUST reproduce that text byte-for-byte in `proposed`/`final` - rebuild
+re-links the live field by finding this exact substring, so rephrasing it
+(even just "et al." vs "dkk.") silently downgrades it to dead plain text.
 """
 import sys
 import json
@@ -17,7 +24,7 @@ import argparse
 from pathlib import Path
 
 from docx import Document
-from docx_utils import iter_units, classify_paragraph, split_sentences, extract_footnotes
+from docx_utils import iter_units, classify_paragraph, split_sentences, extract_footnotes, iter_field_spans
 
 
 def build_segments(docx_path, client=None):
@@ -34,30 +41,38 @@ def build_segments(docx_path, client=None):
             ptype = "heading"
 
         text = paragraph.text.strip()
+        field_texts = [visible for visible, _els in iter_field_spans(paragraph)]
 
         if kind == "table_cell_para":
             ptype = "table_cell"
 
         if ptype in ("body", "quote") and kind == "body_para":
             for i, sentence in enumerate(split_sentences(text)):
-                rows.append({
+                row = {
                     "id": f"{unit_id}.s{i}",
                     "type": ptype,
                     "source": sentence,
                     "proposed": "",
                     "final": "",
-                })
+                }
+                in_this_sentence = [f for f in field_texts if f in sentence]
+                if in_this_sentence:
+                    row["citation_fields"] = in_this_sentence
+                rows.append(row)
         else:
             # headings, captions, list items, bibliography entries, and all
             # table cells are kept as one row each - splitting them further
             # rarely makes sense and risks losing structure on rebuild.
-            rows.append({
+            row = {
                 "id": f"{unit_id}.s0",
                 "type": ptype,
                 "source": text,
                 "proposed": "",
                 "final": "",
-            })
+            }
+            if field_texts:
+                row["citation_fields"] = field_texts
+            rows.append(row)
 
     for fid, text in extract_footnotes(docx_path):
         if not text:

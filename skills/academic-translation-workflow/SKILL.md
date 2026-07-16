@@ -67,6 +67,19 @@ mis-splits around abbreviations or unusual punctuation. Fix any rows that
 look wrong now - merging two rows that should be one sentence, for
 instance - since every later step just trusts what's here.
 
+**Watch for `citation_fields` on a row.** If the source document's in-text
+citations were inserted by a reference manager (Zotero, Mendeley, EndNote's
+"Insert Citation"), they're not plain text - they're a live field linked to
+the client's reference library. `segment_docx.py` detects these and lists
+each field's exact visible text (e.g. `"(Bhambra, 2021)"`) on the row. The
+rebuild step re-links each field by finding that exact substring in the
+translated sentence, so when you translate such a row, **reproduce that
+citation text byte-for-byte** - don't touch capitalization, spacing, or
+"dkk." vs "et al." style choices within it, even if the rest of the sentence
+changes completely around it. Getting this wrong doesn't break anything
+loudly; it just quietly turns that one citation into dead, unlinked text in
+the final document.
+
 ## Step 3 - Translate and annotate
 
 For each row, write a `proposed` English translation. This is the heart of

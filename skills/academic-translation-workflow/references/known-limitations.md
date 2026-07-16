@@ -27,16 +27,35 @@ possible for e.g. a long list item). They become a single row instead. If you
 hit a genuinely multi-sentence one, translate it as a unit rather than
 forcing a split that the rebuild step wouldn't know how to reverse.
 
-**Bibliography detection is heading-text-based.** A paragraph is treated as a
-bibliography entry once a heading matching "Daftar Pustaka" / "References" /
-similar has been seen, until the next heading. If a source document doesn't
-use a recognizable heading for its reference list, entries will be
-classified as ordinary body/list paragraphs instead - harmless (they still
-get a row and get translated), just not flagged with the `bibliography` type.
-Bibliography entries are typically left as the original citation (title
-untranslated, or with a bracketed translation added) rather than fully
-translated - use judgment per academic convention, and ask the translator in
-the Questions section if unsure.
+**Bibliography detection is text-based.** A paragraph starts bibliography
+mode when it matches "Daftar Pustaka" / "References" / "Bibliografi" as its
+ENTIRE text, whether it's styled as a real Word heading or just a bare
+paragraph (common in draft manuscripts that don't use heading styles
+consistently) - everything after it, until the next heading, is treated as
+a `bibliography` row. If a source document's reference list uses some other
+marker entirely (e.g. a language/spelling this regex doesn't cover), entries
+fall back to being classified as ordinary body/list paragraphs - harmless
+(they still get a row and get translated), just not flagged with the
+`bibliography` type, so skim the end of `segments.json` to check. Bibliography
+entries are typically left as the original citation (title untranslated, or
+with a bracketed translation added) rather than fully translated - use
+judgment per academic convention, and ask the translator in the Questions
+section if unsure.
+
+**Reference-manager citation fields (Zotero/Mendeley/EndNote) are preserved
+as live fields on rebuild**, not flattened to plain text - see the
+"Watch for `citation_fields`" note in `SKILL.md` Step 2. This works by
+finding the field's exact visible text again inside the translated sentence
+and splicing the original field XML back in around it; if that exact text
+isn't found (because the citation itself got reworded during translation),
+`rebuild_final_docx.py` prints a `WARNING` naming the affected paragraph and
+falls back to writing the citation as plain, unlinked text rather than
+failing - check any such warning before delivering, since it means that one
+citation lost its live link back to the client's reference library. This
+preservation only applies to `apply_translated_text`'s normal paragraph/cell
+path; it has not been extended to `write_footnotes` (footnote text), so a
+citation field embedded inside a footnote will currently be flattened - flag
+this to the translator if you spot one.
 
 **Footnotes require `word/footnotes.xml` to already exist** in the source
 file, which it will for any real Word document that has actual footnotes.

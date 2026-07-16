@@ -10,6 +10,12 @@ touches are left completely alone. This is what gives exact fidelity to the
 source's margins/fonts/colors/layout - we are NOT generating a new document
 from scratch.
 
+Reference-manager in-text citations (Zotero/Mendeley/EndNote "Insert
+Citation" fields) are preserved as live fields rather than flattened to
+plain text, as long as translation left the citation's own visible text
+(e.g. "(Bhambra, 2021)") unchanged - see docx_utils.iter_field_spans /
+apply_translated_text.
+
 Row ids in reviewed.json must match ids produced by segment_docx.py against
 this SAME original file (same paragraph/table structure) - that's what lets
 each translated row find its way back to the exact right paragraph.
@@ -56,13 +62,16 @@ def rebuild(source_docx, reviewed_json_path, output_docx):
 
     doc = Document(source_docx)
     touched = 0
+    flattened_citations = {}  # unit_id -> [visible_text, ...] that lost their live field
     for unit_id, kind, paragraph in iter_units(doc):
         if unit_id not in by_unit:
             continue
         parts = [t for _, t in sorted(by_unit[unit_id])]
         final_text = " ".join(p for p in parts if p)
         if final_text:
-            apply_translated_text(paragraph, final_text)
+            unmatched = apply_translated_text(paragraph, final_text)
+            if unmatched:
+                flattened_citations[unit_id] = unmatched
             touched += 1
 
     tmp_path = str(Path(output_docx).with_suffix(".tmp.docx"))
@@ -78,6 +87,14 @@ def rebuild(source_docx, reviewed_json_path, output_docx):
             f"WARNING: {len(empty_translation)} row(s) have NO text at all (resolved and proposed both blank) - "
             f"those paragraphs were left in their ORIGINAL SOURCE LANGUAGE in the output, untouched: {empty_translation}. "
             f"This usually means a translation went missing upstream - check these before delivering."
+        )
+    if flattened_citations:
+        print(
+            f"WARNING: {len(flattened_citations)} paragraph(s) had a reference-manager citation field "
+            f"(Zotero/Mendeley/EndNote) that could NOT be re-linked because its exact visible text no longer "
+            f"appears in the translated sentence - it was written as plain (dead) text instead: {flattened_citations}. "
+            f"This usually means the citation text itself got rephrased during translation - citation text should "
+            f"be left byte-for-byte unchanged so the live link survives. Check these rows before delivering."
         )
 
 

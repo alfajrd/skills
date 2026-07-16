@@ -108,6 +108,14 @@ def build_review_doc(annotated, out_path):
         "Row IDs are stable references back to the source document - "
         "use them if you need to ask about a specific row."
     )
+    if any(r.get("citation_fields") for r in (annotated.get("rows") or [])):
+        doc.add_paragraph(
+            "Rows marked \"[citation]\" in the Type column contain a live "
+            "reference-manager citation (Zotero/Mendeley/EndNote). If you "
+            "override the Proposed text, reproduce that citation's text "
+            "exactly - rephrasing it (even just formatting) will break its "
+            "live link back to your reference library in the final document."
+        )
 
     rows = annotated.get("rows") or []
     table = doc.add_table(rows=1, cols=5)
@@ -124,7 +132,7 @@ def build_review_doc(annotated, out_path):
     for row_data in rows:
         cells = table.add_row().cells
         cells[0].text = row_data.get("id", "")
-        cells[1].text = row_data.get("type", "")
+        cells[1].text = row_data.get("type", "") + (" [citation]" if row_data.get("citation_fields") else "")
         cells[2].text = row_data.get("source", "")
         set_cell_markup(cells[3], row_data.get("proposed", ""))
         cells[4].text = row_data.get("final", "")

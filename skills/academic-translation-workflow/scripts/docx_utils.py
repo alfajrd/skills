@@ -18,6 +18,7 @@ Design notes (read this before modifying):
   turns that markup into actual italic runs.
 """
 import re
+import copy
 import zipfile
 import shutil
 from lxml import etree
@@ -67,6 +68,14 @@ def iter_units(document):
 BIBLIOGRAPHY_HEADINGS = re.compile(
     r'daftar\s+pustaka|bibliograf|^references$', re.IGNORECASE
 )
+# Matches a paragraph whose ENTIRE text is just a section-marker word, e.g. a
+# bare "REFERENCES" paragraph styled as plain Normal/Body Text rather than a
+# real Word heading - common in draft manuscripts that don't use built-in
+# heading styles consistently. Anchored on the full string (not .search) so
+# it can't misfire on "...see References above" appearing mid-sentence.
+BIBLIOGRAPHY_MARKER_ONLY = re.compile(
+    r'^(daftar\s+pustaka|bibliograf\w*|references?)$', re.IGNORECASE
+)
 LIST_TEXT_RE = re.compile(r'^([•●\-\*]|\d+[.)])\s+')
 
 
@@ -81,6 +90,8 @@ def classify_paragraph(paragraph, in_bibliography):
         if BIBLIOGRAPHY_HEADINGS.search(text):
             return "heading_starts_bibliography"
         return "heading"
+    if BIBLIOGRAPHY_MARKER_ONLY.match(text):
+        return "heading_starts_bibliography"
     if "caption" in style:
         return "caption"
     if "quote" in style:
@@ -131,6 +142,61 @@ def split_sentences(text):
     return [s.replace('', '.').strip() for s in sentences if s.strip()]
 
 
+# --- Reference-manager in-text citations (Zotero / Mendeley / EndNote) -------
+#
+# These tools insert in-text citations as OOXML *fields*, not plain text: a
+# `w:fldChar type="begin"` run, one or more `w:instrText` runs carrying the
+# actual instruction (e.g. `ADDIN ZOTERO_ITEM CSL_CITATION {...json...}` or
+# `ADDIN EN.CITE` for Mendeley/EndNote), a `w:fldChar type="separate"` run,
+# then the visible "result" text (e.g. "(Bhambra, 2021)") in ordinary `w:t`
+# runs, and finally `w:fldChar type="end"`. That structure is what keeps the
+# citation "live" - linked back to the user's reference library so they can
+# still update/restyle it later. python-docx's Run.text already ignores
+# w:instrText (only w:t/w:tab/w:br/w:cr/w:noBreakHyphen/w:ptab count), so
+# *reading* a paragraph's text already surfaces just the visible citation
+# text correctly - no special handling needed there. The risk is on
+# *rebuild*: naively stripping all runs and replacing them with plain
+# translated text would silently flatten every citation field to dead text.
+# Mendeley/EndNote sometimes nest a second, hidden field inside the visible
+# one; tracking begin/end at matching depth (not just the first "end" seen)
+# treats that whole nested structure as one atomic span, which is exactly
+# what we want - we never need to understand a field's internals, only its
+# boundaries, since we're preserving it unchanged rather than parsing it.
+
+def iter_field_spans(paragraph):
+    """Yield (visible_text, run_elements) for each top-level OOXML field
+    found among this paragraph's runs, in document order. `run_elements` is
+    the list of raw `<w:r>` elements spanning that field (begin...end,
+    inclusive) - callers splice these back in as-is rather than rebuilding
+    them, since a field's internal structure is reference-manager-specific
+    and not worth (or safe to) reverse-engineer.
+    """
+    runs = paragraph.runs
+    i = 0
+    while i < len(runs):
+        fld = runs[i]._r.find(qn('w:fldChar'))
+        if fld is not None and fld.get(qn('w:fldCharType')) == 'begin':
+            depth = 1
+            j = i + 1
+            while j < len(runs) and depth > 0:
+                fldj = runs[j]._r.find(qn('w:fldChar'))
+                if fldj is not None:
+                    ftype = fldj.get(qn('w:fldCharType'))
+                    if ftype == 'begin':
+                        depth += 1
+                    elif ftype == 'end':
+                        depth -= 1
+                j += 1
+            end = j - 1  # index of the matching (depth-0) end fldChar run
+            span_runs = runs[i:end + 1]
+            visible = "".join(run.text for run in span_runs).strip()
+            if visible:
+                yield visible, [r._r for r in span_runs]
+            i = end + 1
+        else:
+            i += 1
+
+
 # --- Writing translated text back into a paragraph, with *italic* markup ------
 
 _MARKUP_RE = re.compile(r'\*([^*]+)\*')
@@ -170,6 +236,17 @@ def apply_translated_text(paragraph, text):
     style, and rendering `*term*` spans as italic runs. Paragraph-level
     formatting (alignment, style, numbering, spacing) is untouched since we
     never touch paragraph-level XML, only its runs.
+
+    Any reference-manager citation field (see iter_field_spans above) found
+    in the ORIGINAL paragraph is preserved as a live field rather than
+    flattened to plain text, provided its exact visible text (e.g.
+    "(Bhambra, 2021)") still appears somewhere in `text` - which is the
+    normal case, since citation text itself should never be rephrased during
+    translation, only the prose around it. Returns a list of citation fields
+    that COULDN'T be matched (and were therefore flattened to plain text
+    after all) - callers should surface this as a warning rather than fail
+    silently, since it usually means the translation reworded a citation
+    that should have been left untouched.
     """
     base_rpr = None
     if paragraph.runs:
@@ -178,18 +255,50 @@ def apply_translated_text(paragraph, text):
         if rpr is not None:
             base_rpr = etree.tostring(rpr)
 
+    fields = list(iter_field_spans(paragraph))  # [(visible_text, run_elements), ...]
+
     for r in list(paragraph.runs):
         r._r.getparent().remove(r._r)
 
-    pieces = _MARKUP_RE.split(text)  # alternating: plain, italic, plain, italic, ...
-    for i, piece in enumerate(pieces):
-        if piece == "":
+    # Greedily tokenize `text` into plain-text chunks and field placeholders,
+    # matching each field at most once, left to right, so a repeated citation
+    # doesn't get spliced into the wrong occurrence.
+    tokens = []  # ('text', str) | ('field', run_elements)
+    used = [False] * len(fields)
+    remaining = text
+    while remaining:
+        best_pos = best_idx = None
+        for idx, (visible, _els) in enumerate(fields):
+            if used[idx]:
+                continue
+            pos = remaining.find(visible)
+            if pos != -1 and (best_pos is None or pos < best_pos):
+                best_pos, best_idx = pos, idx
+        if best_pos is None:
+            tokens.append(('text', remaining))
+            break
+        if best_pos > 0:
+            tokens.append(('text', remaining[:best_pos]))
+        tokens.append(('field', fields[best_idx][1]))
+        used[best_idx] = True
+        remaining = remaining[best_pos + len(fields[best_idx][0]):]
+
+    for kind, payload in tokens:
+        if kind == 'field':
+            for el in payload:
+                paragraph._p.append(copy.deepcopy(el))
             continue
-        run = paragraph.add_run(piece)
-        if base_rpr is not None:
-            run._r.insert(0, etree.fromstring(base_rpr))
-        if i % 2 == 1:  # odd index = came from inside *...*
-            run.italic = True
+        pieces = _MARKUP_RE.split(payload)  # alternating: plain, italic, plain, italic, ...
+        for i, piece in enumerate(pieces):
+            if piece == "":
+                continue
+            run = paragraph.add_run(piece)
+            if base_rpr is not None:
+                run._r.insert(0, etree.fromstring(base_rpr))
+            if i % 2 == 1:  # odd index = came from inside *...*
+                run.italic = True
+
+    return [visible for idx, (visible, _els) in enumerate(fields) if not used[idx]]
 
 
 # --- Footnotes (word/footnotes.xml is not modeled by python-docx) -------------
