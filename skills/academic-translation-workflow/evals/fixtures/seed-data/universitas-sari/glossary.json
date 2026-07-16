@@ -1,0 +1,20 @@
+[
+  {
+    "source_term": "berbasis komunitas",
+    "target_term": "community-based",
+    "gloss": "",
+    "notes": "Direct English equivalent exists; not a loanword, no italics needed.",
+    "status": "confirmed",
+    "first_seen_in": "universitas-sari_gotongroyong_v1_proposed.docx",
+    "last_confirmed": "2026-07-01"
+  },
+  {
+    "source_term": "gotong royong",
+    "target_term": "gotong royong",
+    "gloss": "communal work",
+    "notes": "No single-word English equivalent; kept as an italicized loanword per academic convention.",
+    "status": "confirmed",
+    "first_seen_in": "universitas-sari_gotongroyong_v1_proposed.docx",
+    "last_confirmed": "2026-07-01"
+  }
+]

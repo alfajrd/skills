@@ -1,0 +1,52 @@
+{
+  "skill_name": "academic-translation-workflow",
+  "evals": [
+    {
+      "id": 1,
+      "name": "gotong-royong-intake",
+      "prompt": "Hi, I've got a new translation job. Client is Universitas Sari (first time working with them). Here's the source article, an Indonesian academic paper about gotong royong: evals/fixtures/gotong_royong.docx. Can you prep this the way we usually do - I need the translation brief plus the segmented review table before I send anything back to them.",
+      "files": ["evals/fixtures/gotong_royong.docx"],
+      "expected_output": "A client data folder is created at data/universitas-sari/ with glossary.json and style_profile.json. A review .docx is produced (front matter: topic overview, key terminology table, questions table; then a 5-column segmented table ID/Type/Source/Proposed/Final with Final left blank). 'gotong royong' and 'sambatan' are italicized in the Proposed column with the first occurrence of each glossed in parentheses and later occurrences not re-glossed. The table row, list items, caption, bibliography entries, and the footnote are all present as rows and translated. The image and table structure from the source are not expected in this intermediate doc (only in the final step).",
+      "expectations": [
+        "A per-client data directory is created (e.g. data/universitas-sari/) containing a glossary.json and a style_profile.json",
+        "The output review document has a front-matter section with a topic overview about gotong royong / communal work before any table",
+        "The output review document has a Key Terminology section/table listing gotong royong and/or sambatan",
+        "The output review document has a Questions for Translator section with at least one open question and an empty/blank answer area",
+        "The output review document contains a table with columns for ID, Type, Source, Proposed, and Final (Final column empty)",
+        "'gotong royong' appears italicized in the Proposed column with an English gloss in parentheses on its first occurrence only",
+        "'sambatan' appears italicized in the Proposed column with an English gloss in parentheses on its first occurrence only",
+        "The footnote text from the source document appears translated as its own row",
+        "The bibliography section rows are present (author/year citations), not silently dropped",
+        "The list items (research stages) appear as translated rows",
+        "The table cells (village names, participant counts) appear as translated rows"
+      ]
+    },
+    {
+      "id": 2,
+      "name": "mangrove-finalize",
+      "prompt": "The translator (that's me) reviewed the mangrove article translation and I'm sending it back - please finalize it into the deliverable. Original source was evals/fixtures/mangrove.docx, and my filled-in review is evals/fixtures/mangrove_reviewed.docx. Client is Universitas Sari.",
+      "files": ["evals/fixtures/mangrove.docx", "evals/fixtures/mangrove_reviewed.docx"],
+      "expected_output": "A final English .docx is produced by editing the ORIGINAL mangrove.docx (not regenerating from scratch), so headings, the data table structure, and paragraph styles match the source exactly, with English text substituted in. 'Community-based' appears without italics (direct equivalent, not a loanword) since the reviewer accepted the proposed non-italicized rendering.",
+      "expectations": [
+        "The final output is a .docx file, not a table/JSON dump",
+        "The final document's heading structure (Background / Results / References) matches the original document's heading structure and order",
+        "The final document contains a table with the same shape as the source (3 columns, location/area/success-rate data) now in English",
+        "The English text 'community-based' or similar appears in the final document without italic formatting, since it has a direct English equivalent",
+        "The References/bibliography entry for Prasetyo (2020) is present in the final document",
+        "The final document is not simply the reviewed table document reformatted - it should read as a normal prose article, not a table of sentences"
+      ]
+    },
+    {
+      "id": 3,
+      "name": "glossary-reuse-returning-client",
+      "prompt": "New article from our returning client Universitas Sari (we've translated for them before, so there should already be a glossary and style notes on file for them): evals/fixtures/mangrove.docx. Same process as usual - get me the proposed translation brief.",
+      "files": ["evals/fixtures/mangrove.docx"],
+      "expected_output": "Before translating, Claude checks data/universitas-sari/glossary.json (pre-seeded with a confirmed entry: 'berbasis komunitas' -> 'community-based', not italicized) and style_profile.json, and reuses that existing rendering rather than re-deriving its own translation or italicizing it as a loanword.",
+      "expectations": [
+        "Claude reads/references the existing data/universitas-sari/glossary.json before proposing translations, rather than treating this as a brand-new client",
+        "'berbasis komunitas' is translated as 'community-based' (or equivalent direct phrasing) and is NOT italicized as a loanword, consistent with the pre-existing glossary entry",
+        "The output review document still has the full front-matter (topic overview, terminology, questions) and the 5-column segmented table"
+      ]
+    }
+  ]
+}

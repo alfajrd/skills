@@ -4,6 +4,7 @@ A collection of [Claude Code](https://claude.com/claude-code) / Claude Agent SDK
 
 ## Skills
 
+- [`academic-translation-workflow`](./skills/academic-translation-workflow) — Manages an Indonesian → English academic-article translation job end to end: segments a source .docx into a reviewable table, tracks a per-client glossary/style profile across jobs, and rebuilds the final document by editing the original file in place so formatting matches exactly.
 - [`verdict-quality-critic`](./skills/verdict-quality-critic) — Two-gate validate-and-critique pipeline for LLM outputs that produce structured judgments (scored reviews, multi-axis evaluations, verdicts).
 
 ## Related
