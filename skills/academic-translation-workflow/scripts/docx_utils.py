@@ -26,6 +26,7 @@ from lxml import etree
 from docx.oxml.ns import qn
 from docx.table import Table, _Cell
 from docx.text.paragraph import Paragraph
+from docx.enum.text import WD_COLOR_INDEX
 
 W_NS = "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}"
 
@@ -200,18 +201,31 @@ def iter_field_spans(paragraph):
 # --- Writing translated text back into a paragraph, with *italic* markup ------
 
 _MARKUP_RE = re.compile(r'\*([^*]+)\*')
+_HIGHLIGHT_RE = re.compile(r'\{\{(.+?)\}\}', re.DOTALL)
+# `{{text}}` renders as yellow-highlighted - used for editorial flags like
+# "{{[butuh sitasi]}}" (citation needed) that an author/editor needs to
+# visually notice, distinct from *text*'s italic (foreign-word) convention.
+# Curly braces were chosen specifically so the highlighted content can
+# itself contain literal square brackets (e.g. "[butuh sitasi]") without
+# any delimiter collision. The two markers aren't designed to nest in the
+# same span for this skill's use cases (highlight is split out first,
+# italic within each resulting piece), so `*{{x}}*` or `{{*x*}}` will only
+# apply the outer marker correctly - keep the two conventions on separate
+# spans of text.
 
 
 def text_with_markup(container):
     """Inverse of apply_translated_text: read a paragraph (or a table cell,
     which may hold multiple paragraphs) back out as a plain string, but
-    re-encode any italic run as `*text*`. This is what lets "italic-ness"
-    survive the round trip through Word - a translator who accepts a row
-    as-is, or who types their own override and hits Ctrl+I in Word, ends up
-    with the same *markup* representation that apply_translated_text expects
-    on the way back in. Consecutive runs sharing the same italic state are
-    merged first so a span split across multiple runs (e.g. by spellcheck)
-    doesn't turn into several adjacent *fragments*.
+    re-encode any italic run as `*text*` and any highlighted run as
+    `{{text}}` (both, nested, as `{{*text*}}`). This is what lets
+    italic-ness/highlight-ness survive the round trip through Word - a
+    translator who accepts a row as-is, or who types their own override and
+    applies Ctrl+I or a highlight color, ends up with the same markup
+    representation that apply_translated_text expects on the way back in.
+    Consecutive runs sharing the same italic+highlight state are merged
+    first so a span split across multiple runs (e.g. by spellcheck) doesn't
+    turn into several adjacent *fragments*.
     """
     paragraphs = container.paragraphs if hasattr(container, "paragraphs") else [container]
     out = []
@@ -220,13 +234,17 @@ def text_with_markup(container):
         for r in p.runs:
             if not r.text:
                 continue
-            italic = bool(r.italic)
-            if merged and merged[-1][1] == italic:
+            state = (bool(r.italic), r.font.highlight_color is not None)
+            if merged and merged[-1][1] == state:
                 merged[-1][0] += r.text
             else:
-                merged.append([r.text, italic])
-        for text, italic in merged:
-            out.append(f"*{text}*" if italic else text)
+                merged.append([r.text, state])
+        for text, (italic, highlighted) in merged:
+            if italic:
+                text = f"*{text}*"
+            if highlighted:
+                text = f"{{{{{text}}}}}"
+            out.append(text)
     return "".join(out)
 
 
@@ -288,15 +306,24 @@ def apply_translated_text(paragraph, text):
             for el in payload:
                 paragraph._p.append(copy.deepcopy(el))
             continue
-        pieces = _MARKUP_RE.split(payload)  # alternating: plain, italic, plain, italic, ...
-        for i, piece in enumerate(pieces):
-            if piece == "":
+        # Split on [[highlight]] first, then *italic* within each resulting
+        # piece - see the module-level note on why these don't nest.
+        hl_pieces = _HIGHLIGHT_RE.split(payload)
+        for h_i, hl_piece in enumerate(hl_pieces):
+            if hl_piece == "":
                 continue
-            run = paragraph.add_run(piece)
-            if base_rpr is not None:
-                run._r.insert(0, etree.fromstring(base_rpr))
-            if i % 2 == 1:  # odd index = came from inside *...*
-                run.italic = True
+            is_highlighted = (h_i % 2 == 1)
+            pieces = _MARKUP_RE.split(hl_piece)  # alternating: plain, italic, plain, italic, ...
+            for i, piece in enumerate(pieces):
+                if piece == "":
+                    continue
+                run = paragraph.add_run(piece)
+                if base_rpr is not None:
+                    run._r.insert(0, etree.fromstring(base_rpr))
+                if i % 2 == 1:  # odd index = came from inside *...*
+                    run.italic = True
+                if is_highlighted:
+                    run.font.highlight_color = WD_COLOR_INDEX.YELLOW
 
     return [visible for idx, (visible, _els) in enumerate(fields) if not used[idx]]
 

@@ -102,8 +102,45 @@ the job, so:
   **not** repeat the gloss. This markup is a lightweight convention the
   scripts parse into real italic runs in the Word output - don't use actual
   Word formatting yourself at this stage, since you're producing JSON.
+  Word order doesn't change this: if you translate a phrase into English
+  first and cite the original term afterward for precision - "the community
+  (*umat*)", "a civilized human being (*insan beradab*)" - that parenthetical
+  term is still a foreign word and stays italicized, exactly as it would if
+  it came first. It's tempting to drop the italics here since the gloss
+  already did its job, but italics mark "this is a foreign word," not "this
+  is unfamiliar," so the position of the word doesn't matter. Treat dropping
+  it as a specific client's style preference to confirm and record in
+  `style_profile.json`, not a default to apply on your own judgment.
 - Note any foreign word that has a clean, direct English equivalent as such
   in the Key Terminology section instead of treating it as a loanword.
+- **Bibliography entries, and citation-style content embedded inside table
+  cells** (author/year/title/publisher lists - common in tables that survey
+  course reading lists or literature), **default to pass-through** (English
+  proposed = original source text, untouched) rather than translation. This
+  isn't laziness - retranslating a cited work's actual title misrepresents
+  it. On a large document this can be the majority of the row count, so
+  don't burn translation effort on it: check whether a row's `type` is
+  `bibliography`, or whether its content is obviously a citation (author
+  name, year, publisher), and leave `proposed` equal to `source` for those.
+  Flag the default itself once in `questions` so the translator can override
+  specific entries if they want a bracketed English gloss instead.
+- **Watch for a stray lone period followed by a lowercase verb** (e.g. "...
+  setiap hari. . menunjukkan bahwa...") - this is a common sign that the
+  author's own citation got accidentally deleted while editing the draft,
+  not a punctuation quirk to normalize silently. Before guessing, check
+  whether a distinctive term right after the gap (a coined phrase like
+  "cognitive empire") matches an entry in the References list - if it does,
+  that's almost certainly the missing citation, and you can insert it in
+  brackets and ask the translator to confirm rather than leaving the gap
+  unexplained or silently smoothing the sentence over.
+- **Check every table has a caption.** Real drafts are inconsistent about
+  this - a document can caption Table 2 and Table 3 properly while leaving
+  Table 1 with no "Table N. Title" paragraph at all. If a table lacks one,
+  don't just leave it uncaptioned in the final document: propose a caption
+  based on the section heading immediately above the table and the table's
+  own content (the same way the document's *other* captions echo their
+  section's argument), and add it to `questions` for confirmation before
+  treating it as final.
 
 Alongside the rows, write:
 - `topic_overview`: a few short paragraphs that would let the translator

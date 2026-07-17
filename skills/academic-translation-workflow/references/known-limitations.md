@@ -27,6 +27,20 @@ possible for e.g. a long list item). They become a single row instead. If you
 hit a genuinely multi-sentence one, translate it as a unit rather than
 forcing a split that the rebuild step wouldn't know how to reverse.
 
+**A multi-paragraph table cell produces one row per paragraph, with no
+built-in way to merge them.** If Word wrapped one logical phrase across two
+paragraphs within a single cell (each gets its own row, e.g.
+`tbl3_r3_c2_p0.s0` and `tbl3_r3_c2_p1.s0`), translate EACH paragraph's row
+as its own complete unit rather than writing the whole translation into one
+row and leaving the other's `proposed` empty - an empty string means "leave
+this paragraph untouched" to `rebuild_final_docx.py` (it's how genuinely
+forgotten rows are protected), so a deliberately-blanked row would silently
+leave the ORIGINAL untranslated fragment sitting there instead of actually
+being cleared. If you genuinely need to blank a row (e.g. because you're
+folding its content into a sibling paragraph on purpose), use a single space
+`" "` as its `proposed`/`final` text, not `""` - that's still truthy, so the
+paragraph actually gets rewritten (to blank) rather than skipped.
+
 **Bibliography detection is text-based.** A paragraph starts bibliography
 mode when it matches "Daftar Pustaka" / "References" / "Bibliografi" as its
 ENTIRE text, whether it's styled as a real Word heading or just a bare
