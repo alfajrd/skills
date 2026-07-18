@@ -1,9 +1,3 @@
 __pycache__/
 *.pyc
 academic-translation-workflow-workspace/
-
-# Real client data (glossaries/style profiles built from actual, often
-# unpublished, client documents) stays local-only - never committed,
-# regardless of whether this repo is public or private. Only the README
-# describing the folder's schema is tracked.
-skills/academic-translation-workflow/data/*/

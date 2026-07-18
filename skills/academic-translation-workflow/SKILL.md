@@ -33,12 +33,18 @@ eval-only; ignore it for real jobs.
 ## Step 1 - Intake
 
 Ask (if not already given): the client's name, and roughly what the article
-is about. Slugify the client name (lowercase, hyphenated) and check for
-`data/<client-slug>/`. If it doesn't exist yet, create it with an empty
-`glossary.json` (`[]`) and `style_profile.json` (`{"observations": []}`) -
-see `references/data-schema.md` for what goes in these and why they matter
-(consistent terminology and tone across every future document for this
-client, not just this one).
+is about. Slugify the client name (lowercase, hyphenated).
+
+Per-client glossaries live in a **separate, private `translation-glossary`
+repo** - deliberately not inside this skill folder, since this skill's own
+code is public and glossaries hold real (often confidential) client
+terminology. Find where that repo is checked out locally (ask if you don't
+already know - a previous conversation may have established the path) and
+look for `<translation-glossary-path>/<client-slug>/`. If it doesn't exist
+yet, create it with an empty `glossary.json` (`[]`) and `style_profile.json`
+(`{"observations": []}`) - see that repo's own README for the schema and why
+these matter (consistent terminology and tone across every future document
+for this client, not just this one).
 
 Name the working files as you go:
 `<client-slug>_<short-topic-slug>_v1_proposed.docx` for what you send the
@@ -85,15 +91,15 @@ the final document.
 For each row, write a `proposed` English translation. This is the heart of
 the job, so:
 
-- **Check `data/<client-slug>/glossary.json` first.** If a term in this
-  document already has a confirmed rendering from a previous job, reuse it
-  rather than re-deriving your own - that consistency is the entire reason
-  the glossary exists. Add any *new* recurring terms you introduce here too
-  (status `"proposed"` until the translator has accepted/corrected a row
-  using it at least once).
-- **Check `data/<client-slug>/style_profile.json`** for accumulated
-  preferences (formality, active vs. passive voice, citation style) and
-  lean into them.
+- **Check `<translation-glossary-path>/<client-slug>/glossary.json` first.**
+  If a term in this document already has a confirmed rendering from a
+  previous job, reuse it rather than re-deriving your own - that consistency
+  is the entire reason the glossary exists. Add any *new* recurring terms
+  you introduce here too (status `"proposed"` until the translator has
+  accepted/corrected a row using it at least once).
+- **Check `<translation-glossary-path>/<client-slug>/style_profile.json`**
+  for accumulated preferences (formality, active vs. passive voice, citation
+  style) and lean into them.
 - **Italicize every foreign-language word or phrase** (Indonesian or
   otherwise) in the English text using `*term*` markup - e.g. `*gotong
   royong*`. The **first occurrence in the whole document** gets a plain-
@@ -189,10 +195,11 @@ haven't gotten to this one" as "no changes." If the script warns about
 unresolved rows, check with the translator before finalizing rather than
 guessing.
 
-While you're here: update `data/<client-slug>/glossary.json` (bump
-`status` to confirmed for terms the translator accepted or explicitly
-corrected) and `data/<client-slug>/style_profile.json` (only add an
-observation once you've actually seen a pattern, not from one data point).
+While you're here: update `<translation-glossary-path>/<client-slug>/glossary.json`
+(bump `status` to confirmed for terms the translator accepted or explicitly
+corrected) and `<translation-glossary-path>/<client-slug>/style_profile.json`
+(only add an observation once you've actually seen a pattern, not from one
+data point).
 
 ## Step 6 - Rebuild the final document
 
