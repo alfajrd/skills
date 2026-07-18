@@ -328,6 +328,23 @@ def apply_translated_text(paragraph, text):
     return [visible for idx, (visible, _els) in enumerate(fields) if not used[idx]]
 
 
+def extract_highlights(text):
+    """Return the inner text of every `{{...}}` highlight span in `text`,
+    in order (the surrounding braces stripped). Used to enumerate the parts
+    of a translated row that need an entry in the catatan penyuntingan
+    (editing-notes document that accompanies the final deliverable)."""
+    return [m.group(1) for m in _HIGHLIGHT_RE.finditer(text)]
+
+
+def strip_markup(text):
+    """Remove `*italic*` and `{{highlight}}` markers, leaving readable plain
+    text. For display contexts (e.g. showing a highlighted span's surrounding
+    sentence in the catatan) where the markers themselves would be noise."""
+    text = _HIGHLIGHT_RE.sub(lambda m: m.group(1), text)
+    text = _MARKUP_RE.sub(lambda m: m.group(1), text)
+    return text
+
+
 # --- Footnotes (word/footnotes.xml is not modeled by python-docx) -------------
 
 _FOOTNOTES_PART = "word/footnotes.xml"

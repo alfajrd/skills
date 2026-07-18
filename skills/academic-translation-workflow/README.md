@@ -21,7 +21,10 @@ humans browsing the repo. See `SKILL.md` for the full step-by-step workflow.
 4. Rebuilds the final document by editing the *original* source file in
    place - so margins, fonts, colors, styles, images, and table layout come
    out identical to what the client submitted, not regenerated from
-   scratch.
+   scratch. Ships it with a *catatan penyuntingan* (editing-notes document)
+   explaining every passage highlighted for the author's review - missing or
+   predicted citations, sentences rewritten or split for clarity, and the
+   like.
 
 Also handles: real Word footnotes, in-text citations inserted by reference
 managers (Zotero/Mendeley/EndNote - preserved as live fields, not flattened
@@ -49,7 +52,7 @@ for the schema.
 SKILL.md              - the actual skill instructions (read this first)
 scripts/               - segment_docx.py, build_review_doc.py,
                           read_reviewed_doc.py, rebuild_final_docx.py,
-                          docx_utils.py (shared helpers)
+                          build_catatan.py, docx_utils.py (shared helpers)
 references/             - known-limitations.md (edge cases worth knowing about)
 evals/                  - test fixtures and eval cases for skill-creator
 ```

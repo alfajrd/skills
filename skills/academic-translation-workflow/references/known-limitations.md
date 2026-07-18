@@ -82,7 +82,20 @@ pipeline is also broken.
 **The `*italic*` markup convention** assumes source text doesn't itself
 contain literal asterisks. Academic Indonesian prose essentially never does,
 but if you ever hit one, escape or reword around it rather than fighting the
-convention.
+convention. The `{{highlight}}` convention likewise assumes the text doesn't
+contain literal `{{`/`}}` - a non-issue for prose.
+
+**The catatan penyuntingan only knows what `editorial_notes.json` tells it.**
+`build_catatan.py` reconciles that file against the `{{...}}` highlights that
+survived into the final text; it can flag a highlight that has no note, and
+drop a note whose highlight is gone, but it can't invent the *reason* a span
+was highlighted. So the discipline that matters is upstream: every time you
+add a `{{...}}` highlight during translation, add the matching note in the
+same step. A highlight is only as useful as its note - a yellow blob the
+author can't interpret is worse than no highlight at all. Note-matching is by
+row `id` (plus the highlighted substring when a row has more than one
+highlight), so keep ids stable and quote the highlighted text in the note
+exactly as it appears in the span.
 
 **Headers/footers/comments/tracked-changes** are not touched by this pipeline
 at all - they pass through unmodified. If a source document's title or
